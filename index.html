@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>鮨せい大 Wine List</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -35,60 +35,65 @@
     letter-spacing: 0.12em;
   }
 
+  /* プルダウン言語切り替え */
   .lang-bar {
     display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 10px 20px;
     border-bottom: 1px solid #ddd;
   }
-  .lang-btn {
-    flex: 1;
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
+  .lang-select {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 12px;
-    letter-spacing: 0.2em;
-    padding: 10px 4px;
-    cursor: pointer;
-    text-transform: uppercase;
-    color: #aaa;
-    transition: color 0.15s;
-    margin-bottom: -1px;
-  }
-  .lang-btn.active {
+    font-size: 13px;
+    letter-spacing: 0.08em;
     color: #111;
-    border-bottom-color: #111;
+    border: 1px solid #bbb;
+    background: #fff;
+    padding: 5px 32px 5px 10px;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
   }
 
+  /* カテゴリタブ */
   .tabs {
     display: flex;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 2px solid #ddd;
   }
   .tab-btn {
     flex: 1;
     background: none;
     border: none;
-    border-bottom: 2px solid transparent;
+    border-bottom: 3px solid transparent;
     font-family: 'Cormorant Garamond', serif;
-    font-size: 13px;
-    letter-spacing: 0.2em;
-    padding: 12px 4px;
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    padding: 13px 4px;
     cursor: pointer;
     text-transform: uppercase;
-    color: #aaa;
+    color: #bbb;
     transition: color 0.15s;
-    margin-bottom: -1px;
+    margin-bottom: -2px;
   }
   .tab-btn.active {
     color: #111;
+    font-weight: 600;
     border-bottom-color: #111;
   }
 
+  /* カテゴリヘッダー */
   .category-header {
-    padding: 24px 20px 8px;
-    font-size: 10px;
-    letter-spacing: 0.45em;
+    padding: 22px 20px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.35em;
     text-transform: uppercase;
-    color: #aaa;
+    color: #111;
   }
 
   .wine-item {
@@ -155,10 +160,13 @@
 </header>
 
 <div class="lang-bar">
-  <button class="lang-btn active" onclick="setLang('ja')">日本語</button>
-  <button class="lang-btn" onclick="setLang('en')">English</button>
-  <button class="lang-btn" onclick="setLang('zh')">中文</button>
-  <button class="lang-btn" onclick="setLang('ko')">한국어</button>
+  <select class="lang-select" onchange="setLang(this.value)">
+    <option value="ja">日本語</option>
+    <option value="en">English</option>
+    <option value="zh">中文</option>
+    <option value="ko">한국어</option>
+    <option value="es">Español</option>
+  </select>
 </div>
 
 <div class="tabs">
@@ -174,32 +182,15 @@
 <script>
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbydq5_3lY-ZRB0rvpVK0RjpqfusbXPg3offvpN8cg3Y8MrMAn7PXLa9_J5EbSDF6mTQCA/exec';
 
-const WINES = [
-  // WHITE
-  {category:"white",name:'Domaine des Amouriers "Suzanne"',region:"Vacqueyras, Rhône",country:"France",grape:"Grenache Blanc / Clairette",vintage:"",price:9600,in_stock:true},
-  {category:"white",name:"Domaine Françoise Jeanniard Bourgogne Chardonnay",region:"Bourgogne",country:"France",grape:"Chardonnay",vintage:"2023",price:12400,in_stock:true},
-  {category:"white",name:"Domaine Chevigny-Rousseau Bourgogne Blanc",region:"Bourgogne",country:"France",grape:"Chardonnay",vintage:"2023",price:13800,in_stock:true},
-  {category:"white",name:"Domaine Françoise Jeanniard Pernand-Vergelesses",region:"Pernand-Vergelesses, Bourgogne",country:"France",grape:"Chardonnay",vintage:"2023",price:15500,in_stock:true},
-  {category:"white",name:"Domaine du Pélican Arbois Chardonnay",region:"Arbois, Jura",country:"France",grape:"Chardonnay",vintage:"2022",price:18200,in_stock:true},
-  {category:"white",name:"Domaine Pierre Guillemot Savigny-Lès-Beaune Dessus les Gollardes",region:"Savigny-lès-Beaune, Bourgogne",country:"France",grape:"Chardonnay",vintage:"2023",price:19000,in_stock:true},
-  {category:"white",name:"Emmanuel Rouget Bourgogne Hautes-Côtes de Beaune",region:"Hautes-Côtes de Beaune, Bourgogne",country:"France",grape:"Chardonnay",vintage:"2023",price:28000,in_stock:true},
-  {category:"white",name:"Emmanuel Rouget Bourgogne Hautes-Côtes de Nuits",region:"Hautes-Côtes de Nuits, Bourgogne",country:"France",grape:"Chardonnay",vintage:"2020",price:29000,in_stock:true},
-  {category:"white",name:"Domaine Leflaive Clavoillion 375ml",region:"Puligny-Montrachet 1er Cru, Bourgogne",country:"France",grape:"Chardonnay",vintage:"2002",price:58000,in_stock:true},
-  {category:"white",name:"Pierre & Louis Trapet Meursault les Vireuils",region:"Meursault, Bourgogne",country:"France",grape:"Chardonnay",vintage:"2020",price:74000,in_stock:true},
-  {category:"white",name:"Domaine Leflaive Bâtard-Montrachet Grand Cru",region:"Bâtard-Montrachet Grand Cru, Bourgogne",country:"France",grape:"Chardonnay",vintage:"2013",price:340000,in_stock:true},
-  // RED
-  {category:"red",name:"Domaine Sylvie Esmonin Bourgogne Rouge Cuvée Sylvie",region:"Bourgogne",country:"France",grape:"Pinot Noir",vintage:"2022",price:13000,in_stock:true},
-  {category:"red",name:"Domaine Jean-Marie Bouzereau Bourgogne Côte-d'Or Pinot Noir",region:"Côte-d'Or, Bourgogne",country:"France",grape:"Pinot Noir",vintage:"",price:18000,in_stock:true},
-  {category:"red",name:"Emmanuel Rouget Bourgogne Passetoutgrain",region:"Bourgogne",country:"France",grape:"Pinot Noir / Gamay",vintage:"2023",price:19800,in_stock:true},
-  {category:"red",name:"Nicolas-Jay Willamette Valley Pinot Noir",region:"Willamette Valley",country:"USA",grape:"Pinot Noir",vintage:"2017",price:21000,in_stock:true},
-];
+// フォールバック用サンプル（GAS接続失敗時）
+const WINES_FALLBACK = [];
 
-// 国名翻訳マップ（スプレッドシートのcountry列は英語で入力）
 const COUNTRY_MAP = {
   ja:{ France:"フランス", Italy:"イタリア", Spain:"スペイン", Germany:"ドイツ", USA:"アメリカ", Australia:"オーストラリア", Japan:"日本", Austria:"オーストリア", Portugal:"ポルトガル", Chile:"チリ", Argentina:"アルゼンチン", "New Zealand":"ニュージーランド", "South Africa":"南アフリカ" },
-  en:null, // そのまま表示
+  en: null,
   zh:{ France:"法国", Italy:"意大利", Spain:"西班牙", Germany:"德国", USA:"美国", Australia:"澳大利亚", Japan:"日本", Austria:"奥地利", Portugal:"葡萄牙", Chile:"智利", Argentina:"阿根廷", "New Zealand":"新西兰", "South Africa":"南非" },
   ko:{ France:"프랑스", Italy:"이탈리아", Spain:"스페인", Germany:"독일", USA:"미국", Australia:"호주", Japan:"일본", Austria:"오스트리아", Portugal:"포르투갈", Chile:"칠레", Argentina:"아르헨티나", "New Zealand":"뉴질랜드", "South Africa":"남아프리카" },
+  es:{ France:"Francia", Italy:"Italia", Spain:"España", Germany:"Alemania", USA:"EE.UU.", Australia:"Australia", Japan:"Japón", Austria:"Austria", Portugal:"Portugal", Chile:"Chile", Argentina:"Argentina", "New Zealand":"Nueva Zelanda", "South Africa":"Sudáfrica" },
 };
 
 const LABELS = {
@@ -207,9 +198,10 @@ const LABELS = {
   en:{ soldOut:'Sold Out', tax:'Tax incl.', footer:'Bottle · Tax included', cats:{red:'Red',white:'White',sparkling:'Sparkling'} },
   zh:{ soldOut:'售罄', tax:'含税', footer:'瓶装 · 含税', cats:{red:'Red',white:'White',sparkling:'Sparkling'} },
   ko:{ soldOut:'품절', tax:'세금포함', footer:'보틀 · 세금포함', cats:{red:'Red',white:'White',sparkling:'Sparkling'} },
+  es:{ soldOut:'Agotado', tax:'IVA incl.', footer:'Botella · IVA incluido', cats:{red:'Red',white:'White',sparkling:'Sparkling'} },
 };
 
-let lang = 'ja', cat = 'all', wines = WINES;
+let lang = 'ja', cat = 'all', wines = [];
 
 function translateCountry(countryEn) {
   const map = COUNTRY_MAP[lang];
@@ -218,8 +210,12 @@ function translateCountry(countryEn) {
 }
 
 async function loadData() {
-  if (!GAS_URL) { render(); return; }
-  try { const r = await fetch(GAS_URL); wines = await r.json(); } catch(e) {}
+  try {
+    const r = await fetch(GAS_URL);
+    wines = await r.json();
+  } catch(e) {
+    wines = WINES_FALLBACK;
+  }
   render();
 }
 
@@ -232,7 +228,10 @@ function render() {
   for (const c of cats) {
     const list = wines
       .filter(w => w.category === c)
-      .sort((a, b) => { if (a.in_stock !== b.in_stock) return a.in_stock ? -1 : 1; return a.price - b.price; });
+      .sort((a, b) => {
+        if (a.in_stock !== b.in_stock) return a.in_stock ? -1 : 1;
+        return a.price - b.price;
+      });
     if (!list.length) continue;
 
     html += `<div class="category-header">${L.cats[c]}</div>`;
@@ -247,19 +246,19 @@ function render() {
           <div class="wine-sub">${sub}</div>
         </div>
         <div>
-          <div class="wine-price">¥${w.price.toLocaleString()}</div>
+          <div class="wine-price">¥${Number(w.price).toLocaleString()}</div>
           <span class="price-sub">${priceSub}</span>
         </div>
       </div>`;
     }
   }
 
+  if (!html) html = '<div style="text-align:center;padding:60px;color:#aaa;font-style:italic">No wines available</div>';
   document.getElementById('wineList').innerHTML = html;
 }
 
 function setLang(l) {
   lang = l;
-  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.l === l));
   render();
 }
 
@@ -268,11 +267,6 @@ function setCategory(c) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === c));
   render();
 }
-
-// lang-btnにdata-l属性をセット
-document.querySelectorAll('.lang-btn').forEach((b, i) => {
-  b.dataset.l = ['ja','en','zh','ko'][i];
-});
 
 loadData();
 </script>
