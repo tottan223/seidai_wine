@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<!-- ★★★ 設定はここだけ。導入時に次の2行の '  ' の中身を書き換える（手順書 STEP 5） ★★★ -->
+<script>
+const LIFF_ID = '2011358116-JoZcMGVT';                        // ← LINE Developers の LIFF ID（例: 2001234567-AbCdEfGh）
+const API_URL = 'https://script.google.com/macros/s/AKfycbzt9Q4R3Qf3jNEsMVZEvvCyvdW1TJCgNHJBvDD4Ipc3vR9SnSE4SaTdMIEfW8nK55Y/exec';   // ← Apps Script のウェブアプリURL（https://script.google.com/macros/s/……/exec）
+</script>
+<!-- ★★★ ここから下は変更不要 ★★★ -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>鮨せい大 マイページ</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root {
+    --ink: #1f2428; --muted: #6b7378; --line: #d9dee2; --bg: #f4f5f6; --card: #ffffff;
+    --accent: #1f4e79; --accent-soft: #e8eff6; --ok: #1d7a4a; --warn: #a24a00;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif; font-size: 15px; line-height: 1.55; }
+  .app { max-width: 720px; margin: 0 auto; padding: 12px 12px 48px; }
+  header.top { display: flex; align-items: baseline; justify-content: space-between; padding: 6px 2px 10px; }
+  header.top h1 { font-size: 17px; margin: 0; letter-spacing: .04em; }
+  header.top .who { color: var(--muted); font-size: 13px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+  .card h2 { font-size: 15px; margin: 0 0 10px; color: var(--accent); }
+  .muted { color: var(--muted); font-size: 13px; }
+  .btn { display: inline-block; appearance: none; border: 1px solid var(--accent); background: var(--accent); color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 15px; cursor: pointer; }
+  .btn.secondary { background: #fff; color: var(--accent); }
+  .btn.block { width: 100%; text-align: center; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .row-btn { display: flex; gap: 10px; margin-top: 12px; }
+  .month-list { list-style: none; margin: 0; padding: 0; }
+  .month-list li { border-top: 1px solid var(--line); }
+  .month-list li:first-child { border-top: 0; }
+  .month-list button { width: 100%; background: none; border: 0; text-align: left; padding: 12px 4px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; color: var(--ink); cursor: pointer; }
+  .month-list .amt { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .month-list .sub { color: var(--muted); font-size: 12px; margin-left: 8px; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { padding: 6px 6px; border-bottom: 1px solid var(--line); text-align: right; font-size: 14px; white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  th:first-child, td:first-child { text-align: left; }
+  td.mark { color: var(--warn); font-size: 12px; }
+  input[type=text] { width: 100%; font-size: 18px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; letter-spacing: .12em; text-transform: uppercase; }
+  label.chk { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0; font-size: 14px; }
+  label.chk input { margin-top: 4px; transform: scale(1.2); }
+  .error { background: #fdecec; border: 1px solid #f3b8b8; color: #8a1f1f; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; }
+  .loading { text-align: center; color: var(--muted); padding: 40px 0; }
+
+  /* ---- 明細（画面・印刷共通） ---- */
+  .slip { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 18px 16px; margin-bottom: 14px; }
+  .slip .head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--ink); padding-bottom: 8px; margin-bottom: 10px; gap: 10px; }
+  .slip .head .title { font-size: 20px; font-weight: 700; letter-spacing: .1em; }
+  .slip .head .co { font-size: 13px; color: var(--muted); text-align: right; }
+  .slip .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: 13px; margin-bottom: 12px; }
+  .slip .meta .k { color: var(--muted); }
+  .slip .name { font-size: 18px; font-weight: 700; margin: 2px 0 10px; }
+  .slip h3 { font-size: 13px; margin: 12px 0 4px; padding: 3px 8px; background: var(--accent-soft); color: var(--accent); border-radius: 4px; }
+  .slip table td, .slip table th { font-size: 14px; }
+  .slip .kv td:first-child { color: var(--ink); }
+  .slip .kv td.sub { color: var(--muted); font-size: 12px; text-align: left; }
+  .slip tr.total td { font-weight: 700; border-top: 2px solid var(--ink); border-bottom: 0; font-size: 15px; }
+  .slip .net { display: flex; justify-content: space-between; align-items: baseline; margin-top: 14px; padding: 10px 12px; border: 2px solid var(--ink); border-radius: 8px; }
+  .slip .net .k { font-weight: 700; }
+  .slip .net .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .slip .foot { margin-top: 12px; font-size: 12px; color: var(--muted); white-space: pre-wrap; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .grid4 .cell { border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+  .grid4 .cell .k { font-size: 11px; color: var(--muted); }
+  .grid4 .cell .v { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .daily { margin-top: 6px; }
+  .daily table { font-size: 13px; }
+
+  @media (max-width: 480px) { .grid4 { grid-template-columns: repeat(2, 1fr); } .slip .head .title { font-size: 18px; } .slip .meta { grid-template-columns: 1fr; } }
+
+  @media print {
+    @page { size: A4; margin: 14mm 12mm; }
+    html, body { background: #fff; font-size: 12px; }
+    .app { max-width: none; padding: 0; }
+    .no-print, header.top { display: none !important; }
+    .slip, .card { border: 0; border-radius: 0; padding: 0; margin: 0; box-shadow: none; }
+    .slip .head .title { font-size: 20px; }
+    .grid4 { grid-template-columns: repeat(4, 1fr); }
+    .daily { page-break-inside: auto; margin-top: 10px; }
+    .daily table th, .daily table td { font-size: 11px; padding: 3px 5px; }
+    tr { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="loading" id="loading">読み込み中…</div>
+</div>
+
+<script>
+/* LIFF_ID と API_URL はファイル先頭の <script> で設定する */
+const PAGE_URL = location.origin + location.pathname;
+const app = document.getElementById('app');
+const state = { idToken: null, home: null, detail: null };
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const yen = n => (n === '' || n === null || n === undefined || isNaN(Number(n))) ? '—' : Number(n).toLocaleString('ja-JP') + '円';
+const hrs = n => (n === '' || n === null || n === undefined) ? '—' : Number(n).toFixed(2) + 'h';
+const ymText = ym => ym ? ym.substring(0, 4) + '年' + Number(ym.substring(4, 6)) + '月分' : '';
+const WEEK = ['日', '月', '火', '水', '木', '金', '土'];
+function dateText(d) { const m = String(d).match(/^(\d{4})\/(\d{2})\/(\d{2})/); if (!m) return d; const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])); return Number(m[2]) + '/' + Number(m[3]) + '（' + WEEK[dt.getDay()] + '）'; }
+
+async function api(body) {
+  const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body), redirect: 'follow' });
+  let j;
+  try { j = await res.json(); } catch (e) { throw new Error('サーバーからの応答を読み取れませんでした（API_URLの設定を確認）'); }
+  if (!j.ok) { const err = new Error(j.message || 'エラーが発生しました'); err.code = j.error; throw err; }
+  return j;
+}
+
+function render(html) { app.innerHTML = html; window.scrollTo(0, 0); }
+function showError(msg, retry) {
+  render('<header class="top"><h1>鮨せい大 マイページ</h1></header><div class="error">' + esc(msg) + '</div>' +
+    (retry ? '<button class="btn block" onclick="location.reload()">再読み込み</button>' : ''));
+}
+
+/* ---------------- 起動 ---------------- */
+(async function main() {
+  const params = new URLSearchParams(location.search);
+  if (params.get('p')) { await printMode(params.get('p')); return; }
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) { liff.login({ redirectUri: PAGE_URL }); return; }
+    state.idToken = liff.getIDToken();
+    if (!state.idToken) { liff.logout(); liff.login({ redirectUri: PAGE_URL }); return; }
+    await loadHome();
+  } catch (e) {
+    if (e.code === 'TOKEN_INVALID') { try { liff.logout(); } catch (_) { } liff.login({ redirectUri: PAGE_URL }); return; }
+    showError(e.message || String(e), true);
+  }
+})();
+
+async function loadHome(res) {
+  const j = res || await api({ action: 'login', idToken: state.idToken });
+  if (j.needRegistration) { renderRegister(j.displayName); return; }
+  state.home = j;
+  renderHome();
+}
+
+/* ---------------- 登録画面 ---------------- */
+function renderRegister(displayName, errMsg) {
+  render(
+    '<header class="top"><h1>鮨せい大 マイページ</h1><span class="who">' + esc(displayName || '') + '</span></header>' +
+    (errMsg ? '<div class="error">' + esc(errMsg) + '</div>' : '') +
+    '<div class="card"><h2>初回登録</h2>' +
+    '<p class="muted">お店から受け取った「登録コード」を入力してください。このLINEアカウントとあなたの明細が紐付きます。</p>' +
+    '<input type="text" id="code" placeholder="登録コード（8文字）" autocomplete="off" autocapitalize="characters">' +
+    '<label class="chk"><input type="checkbox" id="consent"><span>給与明細・支払明細を、このマイページ上での閲覧（ウェブ閲覧方式）によって電子的に受け取ることに同意します。紙での交付を希望する場合はいつでも申し出ることができます。</span></label>' +
+    '<button class="btn block" id="regBtn">登録する</button></div>'
+  );
+  document.getElementById('regBtn').onclick = async () => {
+    const code = document.getElementById('code').value.trim();
+    const consent = document.getElementById('consent').checked;
+    if (!code) { renderRegister(displayName, '登録コードを入力してください'); return; }
+    if (!consent) { renderRegister(displayName, '電子交付への同意にチェックを入れてください'); return; }
+    const btn = document.getElementById('regBtn'); btn.disabled = true; btn.textContent = '登録中…';
+    try { const j = await api({ action: 'register', idToken: state.idToken, code, consent: true }); await loadHome(j); }
+    catch (e) { renderRegister(displayName, e.message); }
+  };
+}
+
+/* ---------------- ホーム ---------------- */
+function renderHome() {
+  const h = state.home, emp = h.employee;
+  const isContractor = emp.type === '業務委託';
+  const slipName = isContractor ? '支払明細' : '給与明細';
+  let html = '<header class="top"><h1>' + esc(h.company.brand || '鮨せい大') + ' マイページ</h1><span class="who">' + esc(emp.name) + ' さん</span></header>';
+
+  // 未確定月の勤怠（入力分）
+  html += '<div class="card"><h2>入力済みの勤怠（確定前）</h2>';
+  if (!h.pending || !h.pending.length) html += '<p class="muted">確定前の月はありません。</p>';
+  h.pending.forEach(p => {
+    html += '<div style="margin:6px 0 12px"><div style="font-weight:600">' + esc(ymText(p.ym)) + '</div>';
+    if (!p.days.length) { html += '<p class="muted" style="margin:4px 0">入力はまだありません。</p>'; }
+    else {
+      const tot = p.days.reduce((s, d) => s + Number(d.total || 0), 0);
+      html += dailyTable(p.days) + '<p class="muted" style="margin:6px 0 0">' + p.days.length + '日・合計 ' + hrs(tot) + '（金額は確定後に表示されます）</p>';
+    }
+    html += '</div>';
+  });
+  html += '<p class="muted">入力の間違いに気づいたら、確定前にお店に連絡してください。</p></div>';
+
+  // 確定済み
+  html += '<div class="card"><h2>' + slipName + '（確定済み）</h2>';
+  if (!h.months.length) html += '<p class="muted">まだ確定した明細はありません。</p>';
+  else {
+    html += '<ul class="month-list">';
+    h.months.forEach(m => {
+      html += '<li><button onclick="openDetail(\'' + esc(m.ym) + '\')"><span>' + esc(ymText(m.ym)) + '<span class="sub">支払日 ' + esc(m.payDate || '—') + '</span></span><span class="amt">' + esc(yen(m.net)) + ' ›</span></button></li>';
+    });
+    html += '</ul>';
+  }
+  html += '</div>';
+  html += '<p class="muted" style="padding:0 4px">' + esc(h.consentText || '') + (emp.consentAt ? '（同意日時：' + esc(emp.consentAt) + '）' : '') + '</p>';
+  render(html);
+}
+
+function dailyTable(days) {
+  let t = '<table><thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>勤務</th><th>通常</th><th>深夜</th><th></th></tr></thead><tbody>';
+  days.forEach(d => {
+    t += '<tr><td>' + esc(dateText(d.date)) + '</td><td>' + esc(d.tin || '—') + '</td><td>' + esc(d.tout || '—') + '</td><td>' + esc(hrs(d.total)) + '</td><td>' + esc(hrs(d.normal)) + '</td><td>' + esc(hrs(d.night)) + '</td><td class="mark">' + (d.src ? '修正' : '') + '</td></tr>';
+  });
+  return t + '</tbody></table>';
+}
+
+/* ---------------- 明細 ---------------- */
+async function openDetail(ym) {
+  render('<div class="loading">読み込み中…</div>');
+  try {
+    const j = await api({ action: 'detail', idToken: state.idToken, ym });
+    state.detail = j;
+    render(
+      '<header class="top"><h1>' + esc(j.company.brand || '') + ' マイページ</h1><span class="who">' + esc(j.slip['氏名']) + ' さん</span></header>' +
+      '<div class="row-btn no-print" style="margin:0 0 12px"><button class="btn secondary" onclick="renderHome()">‹ 戻る</button><button class="btn" onclick="printSlip(\'' + esc(ym) + '\')">印刷・PDF保存</button></div>' +
+      slipHtml(j)
+    );
+  } catch (e) { showError(e.message, true); }
+}
+
+function slipHtml(j) {
+  const s = j.slip, isC = s['区分'] === '業務委託';
+  const L = isC
+    ? { title: '支払明細書', base: '業務報酬（通常）', night: '業務報酬（深夜）', fixed: '固定報酬', total: '報酬合計', net: '差引支払額', pay: '支払日', idLabel: 'ID' }
+    : { title: '給与明細書', base: '基本給（通常勤務分）', night: '深夜勤務分', fixed: '固定給', total: '総支給額', net: '差引支給額', pay: '支払日', idLabel: '従業員ID' };
+  const n = k => Number(s[k]) || 0;
+  let h = '<div class="slip">';
+  h += '<div class="head"><div class="title">' + L.title + '</div><div class="co">' + esc(j.company.name || '') + (j.company.brand ? '<br>' + esc(j.company.brand) : '') + '</div></div>';
+  h += '<div class="meta"><div><span class="k">対象期間　</span>' + esc(s['期間']) + '</div><div><span class="k">' + L.pay + '　</span>' + esc(s['支払日'] || '—') + '</div>' +
+       '<div><span class="k">' + L.idLabel + '　</span>' + esc(s['従業員ID']) + '</div><div><span class="k">明細No.　</span>' + esc(s['明細ID']) + '</div></div>';
+  h += '<div class="name">' + esc(s['氏名']) + '　様</div>';
+
+  // 勤怠（固定報酬のみの月は省略）
+  if (n('出勤日数') || n('総労働時間')) {
+    h += '<h3>勤怠</h3><div class="grid4">' +
+      cell('出勤日数', n('出勤日数') + '日') + cell('総労働時間', hrs(s['総労働時間'])) + cell('通常時間', hrs(s['通常時間'])) + cell('深夜時間（22時〜）', hrs(s['深夜時間'])) + '</div>';
+  }
+
+  // 支給
+  h += '<h3>支給</h3><table class="kv"><tbody>';
+  if (n('固定報酬')) h += kv(L.fixed, yen(s['固定報酬']));
+  if (n('基本給') || n('通常時間')) h += kv(L.base, yen(s['基本給']), hrs(s['通常時間']) + ' × ' + yen(s['時給']));
+  if (n('深夜勤務分') || n('深夜時間')) h += kv(L.night, yen(s['深夜勤務分']), hrs(s['深夜時間']) + ' × ' + yen(s['深夜時給']));
+  if (n('交通費')) h += kv('交通費', yen(s['交通費']));
+  if (n('調整額')) h += kv('調整額', yen(s['調整額']), s['調整内容']);
+  h += '<tr class="total"><td>' + L.total + '</td><td></td><td>' + yen(s['総支給額']) + '</td></tr></tbody></table>';
+
+  // 控除
+  h += '<h3>控除</h3><table class="kv"><tbody>';
+  if (!isC) {
+    h += kv('源泉所得税', yen(s['源泉所得税'])) + kv('雇用保険料', yen(s['雇用保険'])) + kv('健康保険料', yen(s['健康保険'])) + kv('厚生年金保険料', yen(s['厚生年金'])) + kv('住民税', yen(s['住民税']));
+  }
+  if (n('その他控除') || isC) h += kv(s['その他控除内容'] ? 'その他控除（' + s['その他控除内容'] + '）' : 'その他控除', yen(s['その他控除']));
+  h += '<tr class="total"><td>控除合計</td><td></td><td>' + yen(s['控除合計']) + '</td></tr></tbody></table>';
+
+  h += '<div class="net"><span class="k">' + L.net + '</span><span class="v">' + yen(s['差引支給額']) + '</span></div>';
+
+  const foot = [];
+  if (j.footer) foot.push(j.footer);
+  if (isC && j.contractorNote) foot.push(j.contractorNote);
+  if (s['備考']) foot.push('備考：' + s['備考']);
+  if (s['確定日時']) foot.push('確定日時：' + s['確定日時']);
+  if (j.consentText) foot.push(j.consentText);
+  h += '<div class="foot">' + esc(foot.join('\n')) + '</div>';
+
+  // 日別勤怠
+  h += '<div class="daily"><h3>日別勤怠</h3>' + (j.daily && j.daily.length ? dailyTable(j.daily) : '<p class="muted">勤怠データはありません。</p>') + '</div>';
+  h += '</div>';
+  return h;
+}
+function cell(k, v) { return '<div class="cell"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div></div>'; }
+function kv(k, v, sub) { return '<tr><td>' + esc(k) + '</td><td class="sub">' + esc(sub || '') + '</td><td>' + esc(v) + '</td></tr>'; }
+
+/* ---------------- 印刷 ---------------- */
+async function printSlip(ym) {
+  try {
+    if (typeof liff !== 'undefined' && liff.isInClient && liff.isInClient()) {
+      const j = await api({ action: 'printToken', idToken: state.idToken, ym });
+      liff.openWindow({ url: PAGE_URL + '?p=' + encodeURIComponent(j.token), external: true });
+    } else {
+      window.print();
+    }
+  } catch (e) { alert(e.message); }
+}
+
+async function printMode(token) {
+  try {
+    const j = await api({ action: 'printData', token });
+    state.detail = j;
+    render(
+      '<header class="top"><h1>' + esc(j.company.brand || '') + ' マイページ</h1></header>' +
+      '<div class="no-print" style="margin:0 0 12px"><button class="btn block" onclick="window.print()">印刷する／PDFに保存</button>' +
+      '<p class="muted">iPhoneはプレビュー画面の共有ボタンから「PDFを保存」できます。Androidは印刷画面のプリンター選択で「PDF形式で保存」を選びます。このページの有効期限は15分です。</p></div>' +
+      slipHtml(j)
+    );
+  } catch (e) { showError(e.message, false); }
+}
+</script>
+</body>
+</html>
