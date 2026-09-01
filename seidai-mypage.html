@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <!-- ★★★ 設定はここだけ。導入時に次の2行の '  ' の中身を書き換える（手順書 STEP 5） ★★★ -->
 <script>
-const LIFF_ID = '2011358116-JoZcMGVT';                        // ← LINE Developers の LIFF ID（例: 2001234567-AbCdEfGh）
+const LIFF_ID = '2011358116';                        // ← LINE Developers の LIFF ID（例: 2001234567-AbCdEfGh）
 const API_URL = 'https://script.google.com/macros/s/AKfycbzt9Q4R3Qf3jNEsMVZEvvCyvdW1TJCgNHJBvDD4Ipc3vR9SnSE4SaTdMIEfW8nK55Y/exec';   // ← Apps Script のウェブアプリURL（https://script.google.com/macros/s/……/exec）
 </script>
 <!-- ★★★ ここから下は変更不要 ★★★ -->
@@ -184,7 +184,9 @@ function renderHome() {
     }
     html += '</div>';
   });
-  html += '<p class="muted">入力の間違いに気づいたら、確定前にお店に連絡してください。</p></div>';
+  html += '<p class="muted">入力を間違えたときは、フォームの「入力の種類」で「修正」を選んで同じ勤務日を送り直すと置き換わります（確定前まで）。一度帰ってまた出勤した日は「登録（2回目）」で2回目の分を送ってください。勤務していない日を送ってしまった場合だけ、お店に連絡してください。</p>';
+  if (h.formUrl) html += '<a class="btn secondary block" href="' + esc(h.formUrl) + '" target="_blank" rel="noopener" style="text-decoration:none">勤怠を入力する（フォームを開く）</a>';
+  html += '</div>';
 
   // 確定済み
   html += '<div class="card"><h2>' + slipName + '（確定済み）</h2>';
