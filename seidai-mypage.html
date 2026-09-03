@@ -8,7 +8,7 @@ const LIFF_ID = '2011358116-JoZcMGVT';                        // ← LINE Develo
 const API_URL = 'https://script.google.com/macros/s/AKfycbzt9Q4R3Qf3jNEsMVZEvvCyvdW1TJCgNHJBvDD4Ipc3vR9SnSE4SaTdMIEfW8nK55Y/exec';   // ← Apps Script のウェブアプリURL（https://script.google.com/macros/s/……/exec）
 </script>
 <!-- ★★★ ここから下は変更不要 ★★★ -->
-<script>const APP_VERSION = '2026-09-03f';</script>
+<script>const APP_VERSION = '2026-09-03g';</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>鮨せい大 マイページ</title>
@@ -48,6 +48,27 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzt9Q4R3Qf3jNEsMVZEvvCy
   label.chk input { margin-top: 4px; transform: scale(1.2); }
   .error { background: #fdecec; border: 1px solid #f3b8b8; color: #8a1f1f; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; }
   .loading { text-align: center; color: var(--muted); padding: 40px 0; }
+  .tabs { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; -webkit-overflow-scrolling: touch; }
+  .tabs button { flex: 0 0 auto; appearance: none; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 8px 14px; border-radius: 999px; font-size: 13.5px; cursor: pointer; white-space: nowrap; }
+  .tabs button.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .tabs .bdg { display: inline-block; margin-left: 6px; font-size: 10px; background: var(--warn); color: #fff; border-radius: 999px; padding: 1px 6px; vertical-align: 1px; }
+  .tabs .prep { display: inline-block; margin-left: 6px; font-size: 10px; color: var(--muted); }
+  .tabs button.active .prep { color: #e8eef5; }
+  .notice { border-bottom: 1px solid var(--line); padding: 12px 2px; }
+  .notice:last-child { border-bottom: 0; }
+  .notice .nt { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .notice .nd { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .notice .pin { font-size: 10.5px; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 0 5px; }
+  .notice .new { font-size: 10.5px; color: #fff; background: var(--warn); border-radius: 4px; padding: 1px 5px; }
+  .notice .ttl { font-weight: 700; font-size: 15px; }
+  .notice .bd { margin-top: 4px; font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+  .notice .bd a { color: var(--accent); }
+  .linkcat { color: var(--accent); font-size: 12.5px; font-weight: 700; margin: 14px 0 2px; letter-spacing: .06em; }
+  .linkcat:first-child { margin-top: 0; }
+  a.lnk { display: block; padding: 10px 4px; border-bottom: 1px solid var(--line); text-decoration: none; color: var(--ink); }
+  a.lnk:last-of-type { border-bottom: 0; }
+  a.lnk .lt { font-weight: 600; }
+  a.lnk .ld { color: var(--muted); font-size: 12.5px; margin-top: 1px; }
 
   /* ---- 明細（画面・印刷共通） ---- */
   .slip { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 18px 16px; margin-bottom: 14px; }
@@ -98,7 +119,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzt9Q4R3Qf3jNEsMVZEvvCy
 /* LIFF_ID と API_URL はファイル先頭の <script> で設定する */
 const PAGE_URL = location.origin + location.pathname;
 const app = document.getElementById('app');
-const state = { idToken: null, home: null, detail: null, targetId: null, adminList: null };
+const state = { idToken: null, home: null, detail: null, targetId: null, adminList: null, tab: null };
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const yen = n => (n === '' || n === null || n === undefined || isNaN(Number(n))) ? '—' : Number(n).toLocaleString('ja-JP') + '円';
@@ -106,6 +127,9 @@ const hrs = n => (n === '' || n === null || n === undefined) ? '—' : Number(n)
 const ymText = ym => ym ? ym.substring(0, 4) + '年' + Number(ym.substring(4, 6)) + '月分' : '';
 const WEEK = ['日', '月', '火', '水', '木', '金', '土'];
 function dateText(d) { const m = String(d).match(/^(\d{4})\/(\d{2})\/(\d{2})/); if (!m) return d; const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])); return Number(m[2]) + '/' + Number(m[3]) + '（' + WEEK[dt.getDay()] + '）'; }
+
+function linkify(s) { return esc(s).replace(/(https?:\/\/[^\s<]+)/g, u => '<a href="' + u + '" target="_blank" rel="noopener">' + u + '</a>'); }
+function daysBetween(a, b) { const p = x => new Date(Number(x.slice(0,4)), Number(x.slice(5,7))-1, Number(x.slice(8,10))); return Math.round((p(b)-p(a))/86400000); }
 
 async function api(body) {
   if (state.targetId && !body.targetId && body.action !== 'printData') body.targetId = state.targetId;
@@ -192,13 +216,69 @@ function renderRegister(displayName, errMsg) {
 
 /* ---------------- ホーム ---------------- */
 function renderHome() {
-  const h = state.home, emp = h.employee;
-  const isContractor = emp.type === '業務委託';
-  const slipName = isContractor ? '支払明細' : '給与明細';
+  const h = state.home, emp = h.employee, portal = h.portal;
   let html = '<header class="top"><h1>' + esc(h.company.brand || '鮨せい大') + ' マイページ</h1><span class="who">' + esc(emp.name) + ' さん</span></header>';
   if (h.admin) html += '<div class="note" style="border-left:4px solid var(--warn);background:#fdf3e7;color:var(--ink);padding:10px 12px;border-radius:8px;margin:0 0 12px;font-size:13px"><b style="color:var(--warn)">管理者プレビュー</b>　' + esc(emp.name) + ' さんに見えている画面です。<a href="#" onclick="backToPicker();return false" style="color:var(--accent)">別の従業員を見る</a></div>';
 
-  // 未確定月の勤怠（入力分）
+  if (!portal) { html += payrollHtml(); render(html); return; }
+
+  // タブ
+  const hasNew = (portal.notices || []).some(n => n.date && daysBetween(n.date, portal.today) <= 7);
+  if (!state.tab || !(portal.tabs || []).some(t => t.id === state.tab)) state.tab = (portal.tabs[0] || { id: 'payroll' }).id;
+  html += '<nav class="tabs">';
+  (portal.tabs || []).forEach(t => {
+    html += '<button class="' + (state.tab === t.id ? 'active' : '') + '" onclick="switchTab(\'' + esc(t.id) + '\')">' + esc(t.name) +
+      (t.id === 'notice' && hasNew ? '<span class="bdg">NEW</span>' : '') +
+      (!t.ready ? '<span class="prep">準備中</span>' : '') + '</button>';
+  });
+  html += '</nav>';
+
+  const tab = (portal.tabs || []).find(t => t.id === state.tab) || { id: 'payroll', ready: true };
+  if (tab.id === 'payroll') html += payrollHtml();
+  else if (!tab.ready) html += '<div class="card"><h2>' + esc(tab.name) + '</h2><p class="muted">' + esc(tab.desc || 'この機能は準備中です。') + '</p></div>';
+  else if (tab.id === 'notice') html += noticeHtml(portal);
+  else if (tab.id === 'links') html += linksHtml(portal);
+  else html += '<div class="card"><p class="muted">' + esc(tab.desc || '') + '</p></div>';
+
+  html += '<p class="muted" style="padding:0 4px;font-size:11px">ページ版 ' + esc(APP_VERSION) + '</p>';
+  render(html);
+}
+
+function switchTab(id) { state.tab = id; renderHome(); }
+
+function noticeHtml(portal) {
+  let html = '<div class="card"><h2>お知らせ</h2>';
+  if (!portal.notices || !portal.notices.length) html += '<p class="muted">いまお知らせはありません。</p>';
+  else portal.notices.forEach(n => {
+    html += '<div class="notice"><div class="nt">' +
+      (n.pin ? '<span class="pin">固定</span>' : '') +
+      (n.date && daysBetween(n.date, portal.today) <= 7 ? '<span class="new">NEW</span>' : '') +
+      '<span class="nd">' + esc(n.date) + '</span><span class="ttl">' + esc(n.title) + '</span></div>' +
+      (n.body ? '<div class="bd">' + linkify(n.body) + '</div>' : '') + '</div>';
+  });
+  return html + '</div>';
+}
+
+function linksHtml(portal) {
+  let html = '<div class="card"><h2>資料・リンク</h2>';
+  if (!portal.links || !portal.links.length) { return html + '<p class="muted">まだ資料はありません。</p></div>'; }
+  const cats = [];
+  portal.links.forEach(l => { if (cats.indexOf(l.cat) < 0) cats.push(l.cat); });
+  cats.forEach(c => {
+    html += '<div class="linkcat">' + esc(c) + '</div>';
+    portal.links.filter(l => l.cat === c).forEach(l => {
+      html += '<a class="lnk" href="' + esc(l.url) + '" target="_blank" rel="noopener"><div class="lt">' + esc(l.title) + ' ↗</div>' + (l.desc ? '<div class="ld">' + esc(l.desc) + '</div>' : '') + '</a>';
+    });
+  });
+  return html + '</div>';
+}
+
+// 勤怠・給与（従来のホーム内容）
+function payrollHtml() {
+  const h = state.home, emp = h.employee;
+  const isContractor = emp.type === '業務委託';
+  const slipName = isContractor ? '支払明細' : '給与明細';
+  let html = '';
   html += '<div class="card"><h2>入力済みの勤怠（確定前）</h2>';
   if (!h.pending || !h.pending.length) html += '<p class="muted">確定前の月はありません。</p>';
   h.pending.forEach(p => {
@@ -214,7 +294,6 @@ function renderHome() {
   if (h.formUrl) html += '<a class="btn secondary block" href="' + esc(h.formUrl) + '" target="_blank" rel="noopener" style="text-decoration:none">勤怠を入力する（フォームを開く）</a>';
   html += '</div>';
 
-  // 確定済み
   html += '<div class="card"><h2>' + slipName + '（確定済み）</h2>';
   if (!h.months.length) html += '<p class="muted">まだ確定した明細はありません。</p>';
   else {
@@ -226,8 +305,7 @@ function renderHome() {
   }
   html += '</div>';
   html += '<p class="muted" style="padding:0 4px">' + esc(h.consentText || '') + (emp.consentAt ? '（同意日時：' + esc(emp.consentAt) + '）' : '') + '</p>';
-  html += '<p class="muted" style="padding:0 4px;font-size:11px">ページ版 ' + esc(APP_VERSION) + '</p>';
-  render(html);
+  return html;
 }
 
 function dailyTable(days) {
