@@ -8,7 +8,7 @@ const LIFF_ID = '2011358116-JoZcMGVT';                        // ← LINE Develo
 const API_URL = 'https://script.google.com/macros/s/AKfycbzt9Q4R3Qf3jNEsMVZEvvCyvdW1TJCgNHJBvDD4Ipc3vR9SnSE4SaTdMIEfW8nK55Y/exec';   // ← Apps Script のウェブアプリURL（https://script.google.com/macros/s/……/exec）
 </script>
 <!-- ★★★ ここから下は変更不要 ★★★ -->
-<script>const APP_VERSION = '2026-09-03g';</script>
+<script>const APP_VERSION = '2026-10-06a';</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>鮨せい大 マイページ</title>
@@ -93,6 +93,13 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzt9Q4R3Qf3jNEsMVZEvvCy
   .grid4 .cell .v { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
   .daily { margin-top: 6px; }
   .daily table { font-size: 13px; }
+
+  /* ---- 勤怠の本人確認 ---- */
+  .confirm { border: 2px solid var(--warn); background: #fffaf3; border-radius: 10px; padding: 12px; margin: 10px 0 4px; }
+  .confirm.done { border-color: var(--ok); background: #f3faf6; }
+  .confirm .ct { font-weight: 700; margin-bottom: 4px; color: var(--warn); }
+  .confirm.done .ct { color: var(--ok); }
+  .confirm .cd { font-size: 13px; color: var(--ink); margin: 0 0 10px; }
 
   @media (max-width: 480px) { .grid4 { grid-template-columns: repeat(2, 1fr); } .slip .head .title { font-size: 18px; } .slip .meta { grid-template-columns: 1fr; } }
 
@@ -224,11 +231,16 @@ function renderHome() {
 
   // タブ
   const hasNew = (portal.notices || []).some(n => n.date && daysBetween(n.date, portal.today) <= 7);
-  if (!state.tab || !(portal.tabs || []).some(t => t.id === state.tab)) state.tab = (portal.tabs[0] || { id: 'payroll' }).id;
+  const needConfirm = (h.pending || []).some(p => p.confirm && !p.confirm.confirmed);
+  if (!state.tab || !(portal.tabs || []).some(t => t.id === state.tab)) {
+    const hasPayroll = (portal.tabs || []).some(t => t.id === 'payroll');
+    state.tab = (needConfirm && hasPayroll) ? 'payroll' : (portal.tabs[0] || { id: 'payroll' }).id;   // 確認待ちがあれば「勤怠・給与」を最初に開く
+  }
   html += '<nav class="tabs">';
   (portal.tabs || []).forEach(t => {
     html += '<button class="' + (state.tab === t.id ? 'active' : '') + '" onclick="switchTab(\'' + esc(t.id) + '\')">' + esc(t.name) +
       (t.id === 'notice' && hasNew ? '<span class="bdg">NEW</span>' : '') +
+      (t.id === 'payroll' && needConfirm ? '<span class="bdg">確認</span>' : '') +
       (!t.ready ? '<span class="prep">準備中</span>' : '') + '</button>';
   });
   html += '</nav>';
@@ -286,11 +298,12 @@ function payrollHtml() {
     if (!p.days.length) { html += '<p class="muted" style="margin:4px 0">入力はまだありません。</p>'; }
     else {
       const tot = p.days.reduce((s, d) => s + Number(d.total || 0), 0);
-      html += dailyTable(p.days) + '<p class="muted" style="margin:6px 0 0">' + p.days.length + '日・合計 ' + hrs(tot) + '（金額は確定後に表示されます）</p>';
+      html += dailyTable(p.days) + '<p class="muted" style="margin:6px 0 0">' + workDays(p.days) + '日・合計 ' + hrs(tot) + '（金額は確定後に表示されます）</p>';
     }
+    if (p.confirm) html += confirmBox(p);
     html += '</div>';
   });
-  html += '<p class="muted">間違えたときは、フォームの「入力の種類」で「送った内容を訂正する」を選び、同じ勤務日を送り直すと置き換わります。一度帰ってまた出勤した日は「同じ日にもう一度出勤した分を登録する」で2回目の分を送ってください。勤務していない日を送ってしまった場合だけ、お店に連絡してください。確定した月の勤怠はフォームからは変わりません（下の「確定済み」に入った月）。</p>';
+  html += '<p class="muted">月が変わったら、先月分の勤怠を見て「この内容で間違いありません」を押してください。お店はそのあとで明細を確定します。間違えたときは、フォームの「入力の種類」で「送った内容を訂正する」を選び、同じ勤務日を送り直すと置き換わります（送り直したら、もう一度確認してください）。一度帰ってまた出勤した日は「同じ日にもう一度出勤した分を登録する」で2回目の分を送ってください。勤務していない日を送ってしまった場合だけ、お店に連絡してください。確定した月の勤怠はフォームからは変わりません（下の「確定済み」に入った月）。</p>';
   if (h.formUrl) html += '<a class="btn secondary block" href="' + esc(h.formUrl) + '" target="_blank" rel="noopener" style="text-decoration:none">勤怠を入力する（フォームを開く）</a>';
   html += '</div>';
 
@@ -306,6 +319,58 @@ function payrollHtml() {
   html += '</div>';
   html += '<p class="muted" style="padding:0 4px">' + esc(h.consentText || '') + (emp.consentAt ? '（同意日時：' + esc(emp.consentAt) + '）' : '') + '</p>';
   return html;
+}
+
+// 出勤日数（1日2回の出勤も1日と数える）
+function workDays(days) { const s = {}; days.forEach(d => { s[d.date] = true; }); return Object.keys(s).length; }
+
+// 先月分の勤怠の本人確認
+function confirmBox(p) {
+  const c = p.confirm, h = state.home;
+  if (c.confirmed) {
+    return '<div class="confirm done"><div class="ct">✓ 確認済み</div><p class="cd" style="margin:0">' + esc(c.at) + ' に「間違いありません」で確認しました。このあと勤怠を送り直すと、確認はいったん外れます。</p></div>';
+  }
+  const head = c.changed ? '確認したあとに勤怠が変わりました。もう一度確認してください' : 'この月の勤怠を確認してください';
+  const body = p.days.length
+    ? '上の勤怠に抜けや間違いがないか見て、正しければボタンを押してください。抜けや間違いがあれば、先にフォームで送り直してください。'
+    : 'この月の勤怠は1件も入力されていません。働いた日がある場合は、先にフォームで入力してください。勤務がなかった場合は、ボタンを押してください。';
+  const due = !c.deadline ? '' : (c.today && c.today > c.deadline ? '期限（' + dateText(c.deadline) + '）を過ぎています。お早めにお願いします。' : '期限：' + dateText(c.deadline) + 'まで');
+  const label = p.days.length ? 'この内容で間違いありません' : 'この月は勤務がありませんでした';
+  const tot = p.days.reduce((s, d) => s + Number(d.total || 0), 0);
+  const btn = h.admin
+    ? '<button class="btn block" disabled>' + esc(label) + '</button><p class="muted" style="margin:6px 0 0">管理者プレビューでは押せません（本人だけが押せます）。</p>'
+    : '<div id="cfa_' + esc(p.ym) + '"><button class="btn block" id="cfs_' + esc(p.ym) + '" onclick="askConfirm(\'' + esc(p.ym) + '\', ' + workDays(p.days) + ', ' + tot + ')">' + esc(label) + '</button></div>';
+  return '<div class="confirm"><div class="ct">' + esc(head) + '</div><p class="cd">' + esc(body) + (due ? '<br><b>' + esc(due) + '</b>' : '') + '</p>' + btn + '</div>';
+}
+
+// 押し間違い防止：もう一度だけ聞いてから送る（LINEの画面でも確実に出るよう、ページの中に表示する）
+function askConfirm(ym, days, tot) {
+  const area = document.getElementById('cfa_' + ym);
+  if (!area) return;
+  area.dataset.orig = area.innerHTML;
+  const what = days ? days + '日・合計 ' + hrs(tot) : '勤務なし';
+  area.innerHTML = '<p class="cd" style="margin:0 0 8px"><b>' + esc(ymText(ym)) + '：' + esc(what) + '</b><br>この内容で送信します。よろしいですか？</p>' +
+    '<button class="btn block" id="cf_' + esc(ym) + '" onclick="confirmMonth(\'' + esc(ym) + '\')">はい、送信する</button>' +
+    '<button class="btn secondary block" style="margin-top:8px" onclick="cancelConfirm(\'' + esc(ym) + '\')">戻る</button>';
+}
+function cancelConfirm(ym) {
+  const area = document.getElementById('cfa_' + ym);
+  if (area && area.dataset.orig) area.innerHTML = area.dataset.orig;
+}
+
+async function confirmMonth(ym) {
+  const btn = document.getElementById('cf_' + ym);
+  if (btn) { btn.disabled = true; btn.textContent = '送信中…'; }
+  try {
+    const j = await api({ action: 'confirmAttendance', idToken: state.idToken, ym });
+    state.home = j; state.tab = 'payroll';
+    renderHome();
+    const done = document.querySelector('.confirm.done');
+    if (done) done.scrollIntoView({ block: 'center' });
+  } catch (e) {
+    alert(e.message);
+    cancelConfirm(ym);
+  }
 }
 
 function dailyTable(days) {
